@@ -107,7 +107,7 @@ def welcome():
                       colored("miguecor@cisco.com", color="blue")))
     print("%s%s\n" % ((colored("    NOTE: ", color="magenta")),
                            colored("This script will look better if you adjust your terminal "
-                                   "width to a value of 120 columns", color="yellow")))
+                                   "width to a value of 80 columns", color="yellow")))
     sleep(2)
     input(colored(" Please hit 'Enter' when you are ready to start... ", color="magenta"))
     clear()
@@ -333,14 +333,14 @@ def choose_app_p():
 
 
 def create_bindings_from_excel():
-    global count, auth_info
+    global count
     try:
         if path.exists(excel_file):
-            apic_id = re.sub(r"http(s)?://(.*)", r"\2", auth_info[0])
+            apic_id = re.sub(r"http(s)?://(.*)", r"\2", main.auth_info[0])
             print("\n" + "%s".rjust(len("%s") + 4) % colored(f" The '{excel_file}' file was found in the local "
-                                                             f"directory."))
+                                                             f"directory.", color="green"))
             print("%s".rjust(len("%s") + 4) % colored(" The script will proceed to deploy the Static Path Bindings "
-                                                      "from the file to the following ACI fabric:"))
+                                                      "from the file to the following ACI fabric:", color="green"))
             print("\n" + "%s".rjust(len("%s") + 4) % colored(f" ACI Fabric IP/Hostname/FQDN: {apic_id}",
                                                              color="green", attrs=["bold"]))
             input("\n" + "%s" % colored(" Please hit 'Enter' when you are ready to start... ",
@@ -355,7 +355,7 @@ def create_bindings_from_excel():
                 this_tn, this_app_p, this_epg = (re.sub(epg_regex, r'\2 \3 \4', epg_dn)).split()
                 fv_rs_path_att_mo = RsPathAtt(epg_dn, tDn=value[0], instrImedcy="immediate", encap=value[1])
                 cfg_request.addMo(fv_rs_path_att_mo)
-                response = mo_dir.commit(cfg_request)
+                response = main.mo_dir.commit(cfg_request)
                 print("\n" + "%s" % colored(f" Deploying on {this_epg}... ", color="blue", attrs=["bold"]))
                 count += 1
                 with open(filename, "a+") as file:
@@ -411,7 +411,7 @@ def generate_excel(epg_without_binding, bind_tdn):
 
 def create_bindings_from_ready_df(binding_ready_to_deploy, bind_tdn):
     global count
-    apic_id = re.sub(r"http(s)?://(.*)", r"\2", auth_info[0])
+    apic_id = re.sub(r"http(s)?://(.*)", r"\2", main.auth_info[0])
     try:
         binding_ready_to_deploy['size'] = ''
         binding_ready_to_deploy['size'] = [value.size for epg_dn, value in binding_ready_to_deploy.encap.iteritems()]
@@ -466,7 +466,7 @@ def create_bindings_from_ready_df(binding_ready_to_deploy, bind_tdn):
                     fv_rs_path_att_mo = RsPathAtt(epg_dn, tDn=bind_tdn, instrImedcy="immediate", encap=vlan_value)
                     cfg_request.addMo(fv_rs_path_att_mo)
                     print("\n" + "%s" % colored(f" Deploying on {this_epg}... ", color="blue", attrs=["bold"]))
-                    response = mo_dir.commit(cfg_request)
+                    response = main.mo_dir.commit(cfg_request)
                     count += 1
                     with open(filename, "a+") as file:
                         file.write("%s: %s fvRsPathAtt_dn: %s %s\n" % (datetime.now().strftime("%Y/%m/%d %H:%M:%S"),
@@ -477,7 +477,7 @@ def create_bindings_from_ready_df(binding_ready_to_deploy, bind_tdn):
                     vlan_value = opt_dict[str(selection)]
                     fv_rs_path_att_mo = RsPathAtt(epg_dn, tDn=bind_tdn, instrImedcy="immediate", encap=vlan_value)
                     cfg_request.addMo(fv_rs_path_att_mo)
-                    response = mo_dir.commit(cfg_request)
+                    response = main.mo_dir.commit(cfg_request)
                     print("\n" + "%s" % colored(f" Deploying on {this_epg}... ", color="blue", attrs=["bold"]))
                     count += 1
                     with open(filename, "a+") as file:
@@ -488,7 +488,7 @@ def create_bindings_from_ready_df(binding_ready_to_deploy, bind_tdn):
             elif value.size == 1:
                 fv_rs_path_att_mo = RsPathAtt(epg_dn, tDn=bind_tdn, instrImedcy="immediate", encap=value[0])
                 cfg_request.addMo(fv_rs_path_att_mo)
-                response = mo_dir.commit(cfg_request)
+                response = main.mo_dir.commit(cfg_request)
                 print("\n" + "%s" % colored(f" Deploying on {this_epg}... ", color="blue", attrs=["bold"]))
                 count += 1
                 with open(filename, "a+") as file:
@@ -504,10 +504,10 @@ def main():
     try:
         banner()
         welcome()
-        auth_info = get_apic_info()
-        mo_dir = login(auth_info)
+        main.auth_info = get_apic_info()
+        main.mo_dir = login(main.auth_info)
         bind_tdn = "%s" % choose_binding_type()
-        epg_df, bind_df = where_to_deploy(mo_dir)  # Any deployment option should always return these 2 DataFrames
+        epg_df, bind_df = where_to_deploy(main.mo_dir)  # Any deployment option should always return these 2 DataFrames
         epg_without_binding = epg_df[~epg_df['epgDn'].isin([value[1] for idx, value in bind_df.iterrows()])]
         binding_ready_to_deploy = pd.DataFrame(bind_df.groupby(['epgDn']).encap.unique())
         generate_excel(epg_without_binding, bind_tdn)
@@ -517,7 +517,7 @@ def main():
                              f" of the deployed objects.", color="green", attrs=["bold"]))
         print("\n" + "%s\n" % colored(f" A total of {count} Static Path Bindings have been configured.",
                                       color="green", attrs=["bold"]))
-        mo_dir.logout()
+        main.mo_dir.logout()
         thank_you()
         final_goodbye()
 
